@@ -17,9 +17,10 @@ import torchvision.transforms as T
 
 
 # L=np.array([[0,0,2,0,0,0,0],[0,1,1,0,1,1,0],[0,1,0,0,1,0,0],[0,1,1,1,1,0,0],[0,0,1,0,1,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,1,0]])
+# dep=[6,6]
 
 L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,0,0,0,0]]) #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
-
+dep=[1,1]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 Transition = namedtuple('Transition',
@@ -67,9 +68,10 @@ class QNet(nn.Module):
         return x
 
 class Agent:
-    def __init__(self,lab):
+    def __init__(self,lab,dep):
 
         self.env = lab
+        self.depart=dep
         self.batch_size = 128
         self.gamma = 0.999
         self.eps_start = 0.9
@@ -182,7 +184,7 @@ class Agent:
 
         for i_episode in range(self.num_episodes):
 
-            state = np.array([1,1])
+            state = np.array(self.depart)
             done=False
             c_reward=0
 
@@ -241,8 +243,9 @@ class Agent:
 
     def test(self):
         print('Testing model:')
-        state = np.array([1,1])
+        state = np.array(self.depart)
         done=False
+        c_reward=0
 
         for t in count():
             action = self.policy_net(self.process_state(state)).max(1)[1].view(1,1).detach() #Calcul de l'action par le réseau
@@ -254,7 +257,7 @@ class Agent:
             if action==2 :
                 newstate=state+[0,1]
             if action==3 :
-                newstate=state+[-1,0]
+                newstate=state+[0,-1]
             if self.env[newstate[0],newstate[1]]!=0:
                 next_state=newstate
                 reward=self.rewardlist[self.env[newstate[0],newstate[1]]]
@@ -263,6 +266,7 @@ class Agent:
             else :
                 next_state=state
                 reward=self.rewardlist[0]
+            c_reward += reward
 
             state = next_state
             print('position : ',state)
@@ -271,7 +275,7 @@ class Agent:
             if done:
                 break
 
-        print('Testing completed')
+        print('Testing completed, reward : ',c_reward)
 
 if __name__ == '__main__':
 
@@ -282,7 +286,7 @@ if __name__ == '__main__':
 
     plt.ion()
 
-    agent = Agent(L)
+    agent = Agent(L,dep)
 
     # Training phase
     agent.train_policy_model()
