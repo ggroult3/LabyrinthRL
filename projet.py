@@ -285,7 +285,7 @@ if __name__ == '__main__':
     agent = Agent(L)
 
     # Training phase
-    # agent.train_policy_model()
+    agent.train_policy_model()
 
     #Testing phase
     agent.load_model()
