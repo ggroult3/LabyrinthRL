@@ -78,7 +78,7 @@ class Agent:
         self.eps_end = 0.05
         self.eps_decay = 200
         self.target_update = 10
-        self.num_episodes = 100
+        self.num_episodes = 500
 
         self.n_actions = 4
         self.episode_durations = []
@@ -197,7 +197,7 @@ class Agent:
                 if action==2 :
                     newstate=state+[0,1]
                 if action==3 :
-                    newstate=state+[-1,0]
+                    newstate=state+[0,-1]
                 if self.env[newstate[0],newstate[1]]!=0:
                     next_state=newstate
                     reward=self.rewardlist[self.env[newstate[0],newstate[1]]]
