@@ -16,8 +16,8 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 
 
-# L=np.array([[0,0,2,0,0,0,0],[0,1,1,0,1,1,0],[0,1,0,0,1,0,0],[0,1,1,1,1,0,0],[0,0,1,0,1,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,1,0]])
-# dep=[6,6]
+# L=np.array([[0,0,2,0,0,0,0],[0,1,1,0,1,1,0],[0,1,0,0,1,0,0],[0,1,1,1,1,0,0],[0,0,1,0,1,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,0]])
+# dep=[5,5]
 
 L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,0,0,0,0]]) #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
 dep=[1,1]
@@ -53,8 +53,8 @@ class QNet(nn.Module):
         # VOTRE CODE
         ############
         # Définition d'un réseau avec une couche cachée (à 256 neurones par exemple)
-        self.fc1=nn.Linear(2, 256)
-        self.fc2=nn.Linear(256, 4)
+        self.fc1=nn.Linear(2, 64)
+        self.fc2=nn.Linear(64, 4)
 
     def forward(self, x):
         # VOTRE CODE
@@ -78,7 +78,7 @@ class Agent:
         self.eps_end = 0.05
         self.eps_decay = 200
         self.target_update = 10
-        self.num_episodes = 500
+        self.num_episodes = 100
 
         self.n_actions = 4
         self.episode_durations = []
@@ -96,24 +96,50 @@ class Agent:
         self.memory = ReplayMemory(10000)
 
         self.steps_done = 0
+        self.def_action=[[1,0],[-1,0],[0,1],[0,-1]]
 
-    def select_action(self,state):
+    def select_action(self,state,test=False):
         sample = random.random()
         eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * \
             math.exp(-1. * self.steps_done / self.eps_decay)
         self.steps_done += 1
-        if sample > eps_threshold:
+        state_process= self.process_state(state) #sous forme de tenseur
+        if sample > eps_threshold or test==True:
             # VOTRE CODE
             ############
             # Calcul et renvoi de l'action fournie par le réseau
             with torch.no_grad():
-                return self.policy_net(state).max(1)[1].view(1,1) #On renvoie sous forme de tenseur de taille 1x1 l'action maximisant le Q en sortie du réseau
+                valeurs=self.policy_net(state_process)
+                listeindice = valeurs.topk(4)[1][0] #donne la liste des indices dans l'ordre (de la valeur la plus grande à la plus petite)
+                action=listeindice[0].view(1,1) #action qui donne le Q le plus élevé
+                newstate=state+self.def_action[action]
+                if self.env[newstate[0],newstate[1]]!=0: #si on n'arrive pas sur un mur
+                    return action
+                action=listeindice[1].view(1,1)
+                newstate=state+self.def_action[action]
+                if self.env[newstate[0],newstate[1]]!=0:
+                    return action
+                action=listeindice[2].view(1,1)
+                newstate=state+self.def_action[action]
+                if self.env[newstate[0],newstate[1]]!=0:
+                    return action
+                action=listeindice[3].view(1,1)
+                return action #On renvoie sous forme de tenseur de taille 1x1 l'action maximisant le Q en sortie du réseau
+
 
         else:
             # VOTRE CODE
             ############
             # Calcul et renvoi d'une action choisie aléatoirement
-            return torch.tensor([[random.randrange(self.n_actions)]], device=device, dtype=torch.long) #Renvoie ici un tenseur valant de 0 à 3
+            action=torch.tensor([[random.randrange(self.n_actions)]], device=device, dtype=torch.long)
+            newstate=state+self.def_action[action]
+            if self.env[newstate[0],newstate[1]]!=0:
+                return action
+            while self.env[newstate[0],newstate[1]]==0:
+                action=torch.tensor([[random.randrange(self.n_actions)]], device=device, dtype=torch.long)
+                newstate=state+self.def_action[action]
+            return action #Renvoie ici un tenseur valant de 0 à 3, qui n'entraîne pas un déplacement vers un mur
+
 
     def process_state(self,state):
         return torch.from_numpy(state).unsqueeze(0).float().to(device)
@@ -164,11 +190,14 @@ class Agent:
         ############
         # Calcul de Q future attendue cumulée
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch
+        # print('A : ',next_state_values * self.gamma)
+        # print('B :', reward_batch)
 
         # VOTRE CODE
         ############
         # Calcul de la fonction de perte de Huber
         loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1)) #unsqueeze pour mettre les valeurs en colonne
+        print(loss)
 
         # VOTRE CODE
         ############
@@ -188,16 +217,11 @@ class Agent:
             done=False
             c_reward=0
 
+
             for t in count():
-                action = self.select_action(self.process_state(state))
-                if action==0 :
-                    newstate=state+[1,0]
-                if action==1 :
-                    newstate=state+[-1,0]
-                if action==2 :
-                    newstate=state+[0,1]
-                if action==3 :
-                    newstate=state+[0,-1]
+                action = self.select_action(state)
+                newstate=state+self.def_action[action] #déplacement
+
                 if self.env[newstate[0],newstate[1]]!=0:
                     next_state=newstate
                     reward=self.rewardlist[self.env[newstate[0],newstate[1]]]
@@ -248,16 +272,10 @@ class Agent:
         c_reward=0
 
         for t in count():
-            action = self.policy_net(self.process_state(state)).max(1)[1].view(1,1).detach() #Calcul de l'action par le réseau
+            action = self.select_action(state,test=True).detach() #Calcul de l'action par le réseau
 
-            if action==0 :
-                newstate=state+[1,0]
-            if action==1 :
-                newstate=state+[-1,0]
-            if action==2 :
-                newstate=state+[0,1]
-            if action==3 :
-                newstate=state+[0,-1]
+            newstate=state+self.def_action[action] #déplacement
+
             if self.env[newstate[0],newstate[1]]!=0:
                 next_state=newstate
                 reward=self.rewardlist[self.env[newstate[0],newstate[1]]]
@@ -269,7 +287,7 @@ class Agent:
             c_reward += reward
 
             state = next_state
-            print('position : ',state)
+            print('position : ',state,c_reward)
 
             time.sleep(0.05)
             if done:
