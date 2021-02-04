@@ -57,12 +57,16 @@ def update_target_model(online_net, target_net):
     target_net.load_state_dict(online_net.state_dict())
 
 
-def main(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs=False):
+def main(L, rewardlist, actions_list,seprendrelesmurs=False, initial_indices=None):
     # L=np.array([[0,0,2,0,0,0,0],[0,1,1,0,1,1,0],[0,1,0,0,1,0,0],[0,1,1,1,1,0,0],[0,0,1,0,1,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,0]])
     # mouse_initial_indices=[5,5]
 
 
     env = deepcopy(L)
+    
+    if initial_indices is False:
+        all_possible_starting_positions = np.array([*np.where(L==1)]).T
+    
     torch.manual_seed(500)
 
     num_inputs = 2+1
@@ -88,6 +92,12 @@ def main(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs=Fal
     loss = 0
 
     for e in range(10000):
+        
+        if initial_indices is None:
+            mouse_initial_indices = all_possible_starting_positions[
+                                        np.random.choice(range(len(all_possible_starting_positions)))
+                                    ]
+        
         done = False
         env = deepcopy(L)
         eaubue=0.
@@ -215,9 +225,10 @@ if __name__=="__main__":
     #                 [0,0,0,0,0,0,0,0,0,0]
     #                 ]).T #Ne pas oublier de repasser l'exploration à 10000
     L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,1,1,4,0],[0,0,0,0,0]]).T #labyrinth utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
+    
     mouse_initial_indices=[1,1]
     rewardlist=[-5,-1,50,-10,20,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
     actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
 
-    m=main(L, mouse_initial_indices, rewardlist, actions_list,False)
-    test(L, mouse_initial_indices, rewardlist, actions_list,False)
+    m=main(L, rewardlist, actions_list,seprendrelesmurs=False,mouse_initial_indices)
+    test(L, rewardlist, actions_list,seprendrelesmurs=False,mouse_initial_indices)

@@ -61,6 +61,7 @@ class Displayer():
             self._make_square_box(*mouse_initial_indices, mouse=True),
             fill="grey"
         )
+    
 
 if __name__=="__main__":
     
