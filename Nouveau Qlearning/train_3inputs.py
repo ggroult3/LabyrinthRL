@@ -64,7 +64,7 @@ def main(L, rewardlist, actions_list,seprendrelesmurs=False, initial_indices=Non
 
     env = deepcopy(L)
     
-    if initial_indices is False:
+    if initial_indices is None:
         all_possible_starting_positions = np.array([*np.where(L==1)]).T
     
     torch.manual_seed(500)
@@ -159,7 +159,7 @@ def main(L, rewardlist, actions_list,seprendrelesmurs=False, initial_indices=Non
             break
 
 
-def test(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs):
+def test(L, rewardlist, actions_list,seprendrelesmurs, initial_indices=None):
     online_net = QNet(3, 4).to(device)
     online_net.load_state_dict(torch.load("./qlearning_model", map_location=device))
     env = deepcopy(L)
@@ -168,9 +168,17 @@ def test(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs):
     eaubue=0.
     steps = 0
     score = 0
+    
+    if initial_indices is None:
+        all_possible_starting_positions = np.array([*np.where(L==1)]).T
+        mouse_initial_indices = all_possible_starting_positions[
+                                        np.random.choice(range(len(all_possible_starting_positions)))
+                                    ]
+        
     state = np.array(mouse_initial_indices)
     state = torch.Tensor(state).to(device)
     state = state.unsqueeze(0)
+    
     def progress_loop(done, steps, state, score,eaubue):
         steps += 1
 
@@ -230,5 +238,5 @@ if __name__=="__main__":
     rewardlist=[-5,-1,50,-10,20,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
     actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
 
-    m=main(L, rewardlist, actions_list,seprendrelesmurs=False,mouse_initial_indices)
+    main(L, rewardlist, actions_list,seprendrelesmurs=False,mouse_initial_indices)
     test(L, rewardlist, actions_list,seprendrelesmurs=False,mouse_initial_indices)
