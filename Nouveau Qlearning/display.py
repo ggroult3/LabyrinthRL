@@ -22,7 +22,7 @@ class Displayer():
             return [self.square_size * elem for elem in (i, j, i+1, j+1)]
         
         
-    def create_labyrinth(self, matrix_labyrinth):
+    def create_labyrinth(self, matrix_labyrinth, mouse_initial_indices):
         
         self.matrix = matrix_labyrinth
         self.square_size = self.WIDTH // (np.max(self.matrix.shape)+1) 
@@ -35,7 +35,6 @@ class Displayer():
         self.main_canva = tk.Canvas(self.window, width=self.WIDTH, height=self.HEIGHT-30, bg='white')
         self.main_canva.pack()
         self.main_canva.focus_set()
-        mouse_placed = False
         
         for i in range(np.shape(self.matrix)[0]):
             for j in range(np.shape(self.matrix)[1]):
@@ -47,9 +46,6 @@ class Displayer():
                 
                 if self.matrix[i,j] == 1:
                     self.main_canva.create_rectangle(*square_box, fill="white")
-                    if not mouse_placed :
-                        mouse_placed = True #mouse placée sur la case vide le plus en haut à gauche.
-                        mouse_initial_indices = (i,j)
                             
                 if self.matrix[i,j] == 2:
                     self.main_canva.create_rectangle(*square_box, fill="green")
@@ -82,7 +78,7 @@ if __name__=="__main__":
                     ]).T #labyrinth utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
     
     displayer = Displayer()
-    displayer.create_labyrinth(L)
+    displayer.create_labyrinth(L, mouse_initial_indices)
     displayer.window.mainloop()
     
     

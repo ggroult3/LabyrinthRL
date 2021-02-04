@@ -26,28 +26,12 @@ def update_target_model(online_net, target_net):
     target_net.load_state_dict(online_net.state_dict())
 
 
-def main():
-    #L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,0,0,0,0]]) #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
+def main(L, mouse_initial_indices, rewardlist, actions_list):
     
-    L = np.array(  [[0,0,0,0,0,0,0,0,0,0],
-                    [0,1,1,3,0,0,1,1,1,0],
-                    [0,0,1,1,1,1,1,0,4,0],
-                    [0,1,1,0,1,0,0,0,1,0],
-                    [0,1,0,0,1,1,1,0,1,0],
-                    [0,1,0,0,0,0,3,0,1,0],
-                    [0,1,0,1,1,0,1,0,1,0],
-                    [0,1,1,1,0,0,1,1,1,0],
-                    [0,0,0,1,0,0,0,1,0,0],
-                    [0,4,1,1,1,1,1,1,2,0],
-                    [0,0,0,0,0,0,0,0,0,0]
-                    ]).T
     
-    dep=[1,1]
     env = L
     torch.manual_seed(500)
     
-    
-
     num_inputs = 2
     num_actions = 4
     print('state size:', num_inputs)
@@ -69,15 +53,13 @@ def main():
     epsilon = 1.0
     steps = 0
     loss = 0
-    rewardlist=[-10,-1,100,-10,5,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
-    actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
 
-    for e in range(100000):
+    for e in range(30000):
         steps = 0
         done = False
 
         score = 0
-        state = np.array(dep)
+        state = np.array(mouse_initial_indices)
         state = torch.Tensor(state).to(device)
         state = state.unsqueeze(0)
 
@@ -131,35 +113,17 @@ def main():
     
 
 
-def test():
+def test(L, mouse_initial_indices, rewardlist, actions_list):
     
     online_net = QNet(2, 4).to(device)
     online_net.load_state_dict(torch.load("./qlearning_model", map_location=device))
     
-    #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
-    #L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,0,0,0,0]])
-    
-    L = np.array(  [[0,0,0,0,0,0,0,0,0,0],
-                    [0,1,1,3,0,0,1,1,1,0],
-                    [0,0,1,1,1,1,1,0,4,0],
-                    [0,1,1,0,1,0,0,0,1,0],
-                    [0,1,0,0,1,1,1,0,1,0],
-                    [0,1,0,0,0,0,3,0,1,0],
-                    [0,1,0,1,1,0,1,0,1,0],
-                    [0,1,1,1,0,0,1,1,1,0],
-                    [0,0,0,1,0,0,0,1,0,0],
-                    [0,4,1,1,1,1,1,1,2,0],
-                    [0,0,0,0,0,0,0,0,0,0]
-                    ]).T
-    
-    dep=[1,1]
     env = L
-    rewardlist=[-10,-1,100,-10,5,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
-    actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
+    
     done = False
     steps = 0
     score = 0
-    state = np.array(dep)
+    state = np.array(mouse_initial_indices)
     state = torch.Tensor(state).to(device)
     state = state.unsqueeze(0)
     
@@ -202,7 +166,7 @@ def test():
         
     displayer = Displayer()
     
-    displayer.create_labyrinth(L)
+    displayer.create_labyrinth(L, mouse_initial_indices)
     progress_loop(done, steps, state, score)
     
     displayer.window.mainloop()
@@ -211,8 +175,38 @@ def test():
 
 
 if __name__=="__main__":
-    m=main()
+    
+    #L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,0,0,0,0]]) #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
+    
+#    L = np.array([ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+#                   [0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0],
+#                   [0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0],
+#                   [0, 3, 1, 0, 0, 0, 1, 1, 1, 1, 0],
+#                   [0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0],
+#                   [0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0],
+#                   [0, 1, 1, 0, 1, 3, 1, 1, 0, 1, 0],
+#                   [0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0],
+#                   [0, 1, 1, 1, 1, 1, 1, 1, 0, 2, 0],
+#                   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+#                 ])
+    
+    L=np.array([
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 0, 0, 0, 0],
+                [2, 1, 3, 1, 1, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 0, 0, 0],
+                [0, 1, 0, 0, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0]
+              ]).T
+    
+    mouse_initial_indices = [5,5]
+    rewardlist = [-10,-1,100,-50,5,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
+    actions_list = [[1,0],[-1,0],[0,1],[0,-1]]
+    
+    
+    #main(L, mouse_initial_indices, rewardlist, actions_list)
 
-    test()
+    test(L, mouse_initial_indices, rewardlist, actions_list)
     
     
