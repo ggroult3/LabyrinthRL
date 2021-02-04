@@ -219,5 +219,5 @@ if __name__=="__main__":
     rewardlist=[-5,-1,50,-10,20,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
     actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
 
-    # m=main(L, mouse_initial_indices, rewardlist, actions_list,False)
+    m=main(L, mouse_initial_indices, rewardlist, actions_list,False)
     test(L, mouse_initial_indices, rewardlist, actions_list,False)
