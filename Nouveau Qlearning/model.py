@@ -45,5 +45,6 @@ class QNet(nn.Module):
 
     def get_action(self, input):
         qvalue = self.forward(input)
-        _, action = torch.max(qvalue, 1)
-        return action.cpu().numpy()[0]
+        # _, action = torch.max(qvalue, 1)
+        # return action.cpu().numpy()[0]
+        return qvalue

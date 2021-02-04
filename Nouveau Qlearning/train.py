@@ -9,24 +9,51 @@ import torch.optim as optim
 import torch.nn.functional as F
 from model import QNet
 from memory import Memory
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
+from display import Displayer
+
 
 from config import initial_exploration, batch_size, update_target, goal_score, log_interval, device, replay_memory_capacity, lr
 
 def get_action(state, target_net, epsilon, env,test=False):
-    if np.random.rand() <= epsilon and test==False:
-        return torch.tensor([[random.randrange(4)]], device=device, dtype=torch.long)
+    actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
+    if np.random.rand() <= epsilon and test==False: #au hasard
+        action=torch.tensor([[random.randrange(4)]], device=device, dtype=torch.long)
+        newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
+        if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
+            return action
+        while env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]==0:
+            action=torch.tensor([[random.randrange(4)]], device=device, dtype=torch.long)
+            newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
+        return action #Renvoie ici un tenseur valant de 0 à 3, qui n'entraîne pas un déplacement vers un mur
     else:
-        return target_net.get_action(state)
+        qvalue=target_net.get_action(state)
+        listeindice=qvalue.topk(4)[1][0]
+        action=listeindice[0].cpu().numpy()
+        newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
+        if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
+            return action
+        action=listeindice[1].cpu().numpy()
+        newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
+        if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
+            return action
+        action=listeindice[2].cpu().numpy()
+        newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
+        if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
+            return action
+        action=listeindice[3].cpu().numpy()
+        return action
 
 def update_target_model(online_net, target_net):
     # Target <- Net
     target_net.load_state_dict(online_net.state_dict())
 
 
-def main():
-    L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,0,0,0,0]]) #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
-    dep=[1,1]
+def main(L, mouse_initial_indices, rewardlist, actions_list):
+    # L=np.array([[0,0,2,0,0,0,0],[0,1,1,0,1,1,0],[0,1,0,0,1,0,0],[0,1,1,1,1,0,0],[0,0,1,0,1,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,0]])
+    # mouse_initial_indices=[5,5]
+
+
     env = L
     torch.manual_seed(500)
 
@@ -40,7 +67,7 @@ def main():
     update_target_model(online_net, target_net)
 
     optimizer = optim.Adam(online_net.parameters(), lr=lr)
-    writer = SummaryWriter('logs')
+    # writer = SummaryWriter('logs')
 
     online_net.to(device)
     target_net.to(device)
@@ -51,14 +78,12 @@ def main():
     epsilon = 1.0
     steps = 0
     loss = 0
-    rewardlist=[-5,-1,50,-10,5,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
-    def_action=[[1,0],[-1,0],[0,1],[0,-1]]
 
-    for e in range(1000):
+    for e in range(250):
         done = False
 
         score = 0
-        state = np.array(dep)
+        state = np.array(mouse_initial_indices)
         state = torch.Tensor(state).to(device)
         state = state.unsqueeze(0)
 
@@ -66,13 +91,14 @@ def main():
             steps += 1
 
             action = get_action(state, target_net, epsilon, env)
-            newstate=state+torch.Tensor(np.array(def_action[action])).to(device)
+            newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
             if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
                 next_state=newstate
                 reward=rewardlist[env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]]
                 if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]==2:
                     done=True
             else :
+                print('mur')
                 next_state=state
                 reward=rewardlist[0]
 
@@ -99,34 +125,42 @@ def main():
         if e % log_interval == 0:
             print('{} episode | score: {:.2f} | epsilon: {:.2f}'.format(
                 e, running_score, epsilon))
-            writer.add_scalar('log/score', float(running_score), e)
-            writer.add_scalar('log/loss', float(loss), e)
+            # writer.add_scalar('log/score', float(running_score), e)
+            # writer.add_scalar('log/loss', float(loss), e)
+            torch.save(online_net.state_dict(), "./qlearning_model")
 
         if running_score > goal_score:
             break
-    torch.save(online_net.state_dict(), "./qlearning_model")
 
-def test():
+
+def test(L, mouse_initial_indices, rewardlist, actions_list):
     online_net = QNet(2, 4).to(device)
     online_net.load_state_dict(torch.load("./qlearning_model", map_location=device))
-    L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,0,0,0,0]]) #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
-    dep=[1,1]
+    # L=np.array([[0,0,2,0,0,0,0],[0,1,1,0,1,1,0],[0,1,0,0,1,0,0],[0,1,1,1,1,0,0],[0,0,1,0,1,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,0]])
+    # mouse_initial_indices=[5,5]
+
     env = L
-    rewardlist=[-5,-1,50,-10,5,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
-    def_action=[[1,0],[-1,0],[0,1],[0,-1]]
+
     done = False
     steps = 0
     score = 0
-    state = np.array(dep)
+    state = np.array(mouse_initial_indices)
     state = torch.Tensor(state).to(device)
     state = state.unsqueeze(0)
-    while not done:
+    def progress_loop(done, steps, state, score):
         steps += 1
 
         action = get_action(state, online_net, 1, env,test=True)
-        newstate=state+torch.Tensor(np.array(def_action[action])).to(device)
+        displacement = np.array(actions_list[action])
+        newstate=state+torch.Tensor(displacement).to(device)
         if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
             next_state=newstate
+
+            displayer.main_canva.move(
+                displayer.mouse,
+                *(displacement  * displayer.square_size)
+            )
+
             reward=rewardlist[env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]]
             if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]==2:
                 done=True
@@ -139,9 +173,33 @@ def test():
         state = next_state
         print('position : ',state.tolist()[0],score)
 
+        if done is False:
+            displayer.window.after(100, lambda: progress_loop(done, steps, state, score))
+    displayer = Displayer()
+
+    displayer.create_labyrinth(L, mouse_initial_indices)
+    progress_loop(done, steps, state, score)
+
+    displayer.window.mainloop()
 
 
 
 if __name__=="__main__":
-    m=main()
-    test()
+    L = np.array(  [[0,0,0,0,0,0,0,0,0,0],
+                    [0,1,1,3,0,0,1,1,1,0],
+                    [0,0,1,1,1,1,1,0,1,0],
+                    [0,1,1,0,1,0,0,0,1,0],
+                    [0,1,0,0,1,1,1,0,1,0],
+                    [0,1,0,0,0,0,3,0,1,0],
+                    [0,1,0,1,1,0,1,0,1,0],
+                    [0,1,1,1,0,0,1,1,1,0],
+                    [0,0,0,1,0,0,0,1,0,0],
+                    [0,1,1,1,1,1,1,1,2,0],
+                    [0,0,0,0,0,0,0,0,0,0]
+                    ]).T
+    mouse_initial_indices=[1,1]
+    rewardlist=[-5,-1,50,-10,5,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
+    actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
+
+    m=main(L, mouse_initial_indices, rewardlist, actions_list)
+    test(L, mouse_initial_indices, rewardlist, actions_list)
