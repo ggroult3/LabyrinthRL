@@ -9,5 +9,7 @@ log_interval = 20
 update_target = 100
 replay_memory_capacity = 1000
 
-#device = torch.device("cuda")
-device = torch.device("cpu")
+try:
+    device = torch.device("cuda")
+except:
+    device = torch.device("cpu")
