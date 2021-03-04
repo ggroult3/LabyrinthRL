@@ -160,7 +160,7 @@ def test(L, mouse_initial_indices, rewardlist, actions_list):
     def progress_loop(done, steps, state, score):
         steps += 1
 
-        action = get_action(state, online_net, 1, env,test=True)
+        action = get_action(state, online_net, 1, env,True,False)
         displacement = np.array(actions_list[action])
         newstate=state+torch.Tensor(displacement).to(device)
         if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
@@ -197,19 +197,19 @@ def test(L, mouse_initial_indices, rewardlist, actions_list):
 
 
 if __name__=="__main__":
-    # L = np.array(  [[0,0,0,0,0,0,0,0,0,0],
-    #                 [0,1,1,3,0,0,1,1,1,0],
-    #                 [0,0,1,1,1,1,1,0,1,0],
-    #                 [0,1,1,0,1,0,0,0,1,0],
-    #                 [0,1,0,0,1,1,1,0,1,0],
-    #                 [0,1,0,0,0,0,3,0,1,0],
-    #                 [0,1,0,1,1,0,1,0,1,0],
-    #                 [0,1,1,1,0,0,1,1,1,0],
-    #                 [0,0,0,1,0,0,0,1,0,0],
-    #                 [0,1,1,1,1,1,1,1,2,0],
-    #                 [0,0,0,0,0,0,0,0,0,0]
-    #                 ]).T #Ne pas oublier de repasser l'exploration à 10000
-    L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,1,1,4,0],[0,0,0,0,0]]) #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau) #régler exploration 300 si seprendrelesmurs = False, 1000 sinon (dans config.py)
+    L = np.array(  [[0,0,0,0,0,0,0,0,0,0],
+                    [0,1,1,3,0,0,1,1,1,0],
+                    [0,0,1,1,1,1,1,0,1,0],
+                    [0,1,1,0,1,0,0,0,1,0],
+                    [0,1,0,0,1,1,1,0,1,0],
+                    [0,1,0,0,0,0,3,0,1,0],
+                    [0,1,0,1,1,0,1,0,1,0],
+                    [0,1,1,1,0,0,1,1,1,0],
+                    [0,0,0,1,0,0,0,1,0,0],
+                    [0,1,1,1,1,1,1,1,2,0],
+                    [0,0,0,0,0,0,0,0,0,0]
+                    ]).T #Ne pas oublier de repasser l'exploration à 10000
+    # L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,1,1,4,0],[0,0,0,0,0]]) #labyrinthe utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau) #régler exploration 300 si seprendrelesmurs = False, 1000 sinon (dans config.py)
     mouse_initial_indices=[1,1]
     rewardlist=[-5,-1,50,-10,20,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
     actions_list=[[1,0],[-1,0],[0,1],[0,-1]]

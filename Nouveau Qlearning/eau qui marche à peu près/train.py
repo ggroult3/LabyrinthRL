@@ -1,53 +1,22 @@
 import os
 import sys
-import matplotlib.pyplot as plt
 import random
 import numpy as np
 from copy import deepcopy
 import torch
 import torch.optim as optim
+#import torch.nn.functional as F
 from model import QNet
-from memory import Memory 
+from memory import Memory
+# from tensorboardX import SummaryWriter
 from display import Displayer
-
-if False:
-    import gym
-    from tensorboardX import SummaryWriter
-    import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 
 from config import initial_exploration, batch_size, update_target, goal_score, log_interval, device, replay_memory_capacity, lr
 
-def get_action(state, target_net, epsilon, env,test=False,seprendrelesmurs=False,eaubue=0.):
+def get_action(state, target_net, epsilon, env,test=False,eaubue=0.):
     stateaugmente=torch.cat((state,torch.tensor(eaubue).unsqueeze(0).unsqueeze(0).to(device)),1)
-    if not seprendrelesmurs:
-        actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
-        if np.random.rand() <= epsilon and test==False: #au hasard
-            action=torch.tensor([[random.randrange(4)]], device=device, dtype=torch.long)
-            newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
-            if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
-                return action
-            while env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]==0:
-                action=torch.tensor([[random.randrange(4)]], device=device, dtype=torch.long)
-                newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
-            return action #Renvoie ici un tenseur valant de 0 à 3, qui n'entraîne pas un déplacement vers un mur
-        else:
-            qvalue=target_net.get_action(stateaugmente)
-            listeindice=qvalue.topk(4)[1][0]
-            action=listeindice[0].cpu().numpy()
-            newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
-            if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
-                return action
-            action=listeindice[1].cpu().numpy()
-            newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
-            if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
-                return action
-            action=listeindice[2].cpu().numpy()
-            newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
-            if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
-                return action
-            action=listeindice[3].cpu().numpy()
-            return action
 
     if np.random.rand() <= epsilon and test==False:
         return torch.tensor([[random.randrange(4)]], device=device, dtype=torch.long)
@@ -60,11 +29,11 @@ def update_target_model(online_net, target_net):
     target_net.load_state_dict(online_net.state_dict())
 
 
-def main(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs=True):
-    
+def main(L, mouse_initial_indices, rewardlist, actions_list):
+    if mouse_initial_indices is None:
+        all_possible_starting_positions = np.array([*np.where(L==1)]).T
     scores = [0]
     best_scores = [0]
-
     env = deepcopy(L)
     torch.manual_seed(2020)
 
@@ -89,12 +58,15 @@ def main(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs=Tru
     epsilon = 1.0
     steps = 0
     loss = 0
-    
+    inint=mouse_initial_indices
     best_score=0
-
-
-    number_episode = 5000
+    number_episode = 1000
     for e in range(number_episode):
+        if inint is None:
+            mouse_initial_indices = all_possible_starting_positions[
+                                        np.random.choice(range(len(all_possible_starting_positions)))
+                                    ]
+
         done = False
         env = deepcopy(L)
         eaubue=0.
@@ -102,17 +74,11 @@ def main(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs=Tru
         state = np.array(mouse_initial_indices)
         state = torch.Tensor(state).to(device)
         state = state.unsqueeze(0)
-        
-        this_episode_step = 0
 
         while not done:
             steps += 1
-#            this_episode_step+=1
-            
-#            if this_episode_step > 10000:
-#                done=True
 
-            action = get_action(state, target_net, epsilon, env,seprendrelesmurs=seprendrelesmurs,eaubue=eaubue)
+            action = get_action(state, target_net, epsilon, env,eaubue=eaubue)
             newstate=state+torch.Tensor(np.array(actions_list[action])).to(device)
             if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
                 next_state=newstate
@@ -145,48 +111,52 @@ def main(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs=Tru
                 batch = memory.sample(batch_size)
                 loss = QNet.train_model(online_net, target_net, optimizer, batch)
 
+
                 if steps % update_target == 0:
                     update_target_model(online_net, target_net)
 
+        print("OK")
+        if score>35:
+            print(score)
         running_score = 0.99 * running_score + 0.01 * score
-        #running_score = score
-        
+        # running_score=score
         scores.append(running_score)
         best_scores.append(score if score > best_scores[-1] else best_scores[-1])
-        
         if e % log_interval == 0:
             print('{} episode | score: {:.2f} | best score: {:.2f} | epsilon: {:.2f}'.format(
                 e, running_score, best_score, epsilon))
             # writer.add_scalar('log/score', float(running_score), e)
             # writer.add_scalar('log/loss', float(loss), e)
-            
             if score > best_score:
                 best_score = score
-                torch.save(online_net.state_dict(), "./qlearning_model")
+            torch.save(online_net.state_dict(), "./qlearning_model")
 
         if running_score > goal_score:
             break
 
     return number_episode, scores, best_scores
 
-
-def test(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs):
+def test(L, mouse_initial_indices, rewardlist, actions_list):
     online_net = QNet(3, 4).to(device)
     online_net.load_state_dict(torch.load("./qlearning_model", map_location=device))
     env = deepcopy(L)
 
     done = False
-    eaubue=0
+    eaubue=0.
     steps = 0
     score = 0
+    if mouse_initial_indices is None:
+        all_possible_starting_positions = np.array([*np.where(L==1)]).T
+        mouse_initial_indices = all_possible_starting_positions[
+                                        np.random.choice(range(len(all_possible_starting_positions)))
+                                    ]
     state = np.array(mouse_initial_indices)
     state = torch.Tensor(state).to(device)
     state = state.unsqueeze(0)
-    
     def progress_loop(done, steps, state, score,eaubue):
         steps += 1
 
-        action = get_action(state, online_net, 1, env,True,seprendrelesmurs,eaubue)
+        action = get_action(state, online_net, 1, env,True,eaubue)
         displacement = np.array(actions_list[action])
         newstate=state+torch.Tensor(displacement).to(device)
         if env[int(newstate[0][0].tolist()),int(newstate[0][1].tolist())]!=0:
@@ -217,55 +187,43 @@ def test(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs):
     displayer = Displayer()
 
     displayer.create_labyrinth(L, mouse_initial_indices)
-    progress_loop(done, steps, state, score,eaubue)
+    progress_loop(done, steps, state, score,0.)
 
     displayer.window.mainloop()
-    
-    
 def plot_convergence(number_episodes, scores, best_scores):
-    
+
     plt.plot(np.linspace(1, number_episodes, len(scores)), scores, lw=1)
     plt.plot(np.linspace(1, number_episodes, len(best_scores)), best_scores, 'k', label='best')
-    
+
     plt.xlim(1, number_episodes)
     plt.ylim(max(-40, 1.2*min(scores)), 1.2*max(best_scores))
-    
+
     plt.xlabel('episode', fontsize=15)
     plt.ylabel('score', fontsize=15)
-    
+
     plt.legend(prop={'size':15})
-    
-    
-
-
 
 if __name__=="__main__":
-#    L = np.array(  [[0,0,0,0,0,0,0,0,0,0],
-#                     [0,1,1,3,0,0,1,1,1,0],
-#                     [0,0,1,1,1,1,1,0,1,0],
-#                     [0,1,1,0,1,0,0,0,1,0],
-#                     [0,1,0,0,1,1,1,0,1,0],
-#                     [0,1,0,0,0,0,3,0,1,0],
-#                     [0,1,0,1,1,0,1,0,1,0],
-#                     [0,1,1,1,0,0,1,1,1,0],
-#                     [0,0,0,1,0,0,0,1,0,0],
-#                     [0,1,1,1,1,1,1,1,2,0],
-#                     [0,0,0,0,0,0,0,0,0,0]
-#                     ]).T #Ne pas oublier de repasser l'exploration à 10000
-    
-    L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,1,1,4,0],[0,0,0,0,0]]).T #labyrinth utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
-    
+    L = np.array(  [[0,0,0,0,0,0,0,0,0,0],
+                    [0,1,1,3,0,0,1,1,1,0],
+                    [0,0,1,1,1,1,1,0,4,0],
+                    [0,1,1,0,1,0,0,0,1,0],
+                    [0,1,0,0,1,1,1,0,1,0],
+                    [0,1,0,0,0,0,3,0,1,0],
+                    [0,1,0,1,1,0,1,0,1,0],
+                    [0,1,1,1,0,0,1,1,1,0],
+                    [0,0,0,1,0,0,0,1,0,0],
+                    [0,1,1,1,1,1,1,1,2,0],
+                    [0,0,0,0,0,0,0,0,0,0]
+                    ]).T
+    # L=np.array([[0,0,0,0,0],[0,1,1,3,0],[0,1,3,1,0],[0,1,1,2,0],[0,1,1,4,0],[0,0,0,0,0]]).T #labyrinth utilisé (0=mur, 1=vide, 2= arrivée, 3=électricité, 4=eau)
     mouse_initial_indices=[1,1]
-    
     rewardlist=[-5,-1,50,-10,20,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
     actions_list=[[1,0],[-1,0],[0,1],[0,-1]]
+    testing = True
 
-
-    testing = False
-    
     if not testing:
-        number_episodes, scores, best_scores = main(L, mouse_initial_indices, rewardlist, actions_list,True)
+        number_episodes, scores, best_scores =main(L, mouse_initial_indices, rewardlist, actions_list)
         plot_convergence(number_episodes, scores, best_scores)
-        
     else:
-        test(L, mouse_initial_indices, rewardlist, actions_list,seprendrelesmurs=True)
+        test(L, mouse_initial_indices, rewardlist, actions_list)
