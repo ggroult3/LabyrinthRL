@@ -103,7 +103,6 @@ def value_iteration(mdp,epsilon=0.001):
             STSN[s] = R(s) + gamma * max([sum([p * STS[s1] for (p,s1) in T(s,a)]) for a in mdp.actions(s)])
             delta = max(delta,abs(STSN[s] - STS[s]))
         if delta < epsilon * (1 - gamma) / gamma:
-            print("\n",STS,"\n")
             return STS,count
 
 def best_policy(mdp,tupleSTS):
@@ -130,7 +129,6 @@ def policy_iteration(mdp):
                 pi[s] = a
                 unchanged = False
         if unchanged:
-            print("\n",STS,"\n")
             return pi,count
 
 def policy_evaluation(pi,STS,mdp,k=20):
@@ -156,14 +154,50 @@ def print_table(table, header=None, sep=' ', numfmt='{}'):
 # rewardlist = [-5,-1,50,-10,20,-10] #se prendre un mur, se déplacer, arriver au fromage, se prendre l'électricité, boire de l'eau, revenir sur de l'eau
 # actions_list = [[1,0],[-1,0],[0,1],[0,-1]]
 
+def findEnd(M):
+    A = []
+    for i in range(len(M)):
+        for j in range(len(M[0])):
+            if M[i][j] == 2:
+                A.append((i,j))
+    return A
 
-L = [[0,0,0,0,0,0],
-     [0,1,1,1,1,0],
-     [0,1,3,1,1,0],
-     [0,3,1,2,1,0],
-     [0,0,0,0,0,0]]
+# L = [[0,0,0,0,0,0,0,0,0,0],
+#     [0,1,1,3,0,0,1,1,1,0],
+#     [0,0,1,1,1,1,1,0,1,0],
+#     [0,1,1,0,1,0,0,0,1,0],
+#     [0,1,0,0,1,1,1,0,1,0],
+#     [0,1,0,0,0,0,3,0,1,0],
+#     [0,1,0,1,1,0,1,0,1,0],
+#     [0,1,1,1,0,0,1,1,1,0],
+#     [0,0,0,1,0,0,0,1,0,0],
+#     [0,1,1,1,1,1,1,1,2,0],
+#     [0,0,0,0,0,0,0,0,0,0]]
+
+# L = [[0,0,0,0,0,0],
+#       [0,1,1,1,1,0],
+#       [0,1,3,1,1,0],
+#       [0,3,1,2,1,0],
+#       [0,0,0,0,0,0]]
+
+
+
+L = [[0,0,0,0,0,0,0,0,0,0],
+    [0,1,1,3,0,0,1,1,1,0],
+    [0,0,1,1,1,1,1,0,1,0],
+    [0,1,1,0,1,0,0,0,1,0],
+    [0,1,0,0,1,1,1,0,1,0],
+    [0,1,0,0,0,0,3,0,1,0],
+    [0,1,0,1,1,0,1,0,1,0],
+    [0,1,1,1,0,0,1,1,1,0],
+    [0,0,0,1,0,0,0,1,0,0],
+    [0,1,1,1,1,1,1,1,2,0],
+    [0,0,0,0,0,0,0,0,0,0]]
+
+
 begin = (1,1)
-end = [(3,3)]
+end = findEnd(L)
+print(end)
 reward_list = [-5,-1,50,-10,20,-10]
 
 
@@ -190,14 +224,14 @@ sequential_decision_environment = GridMDP(grid,end,begin)
 
 value_iter,value_count = best_policy(sequential_decision_environment,value_iteration(sequential_decision_environment,.01))
 
-print("\n",value_iter,"\n")
+print("\n",value_count,"\n")
 
 print("\n Optimal Policy based on Value Iteration\n")
 print_table(sequential_decision_environment.to_arrows(value_iter))
 
 policy_iter,policy_count = policy_iteration(sequential_decision_environment)
 
-print("\n",policy_iter,"\n")
+print("\n",policy_count,"\n")
 
 print("\n Optimal Policy based on Policy Iteration & Evaluation\n")
 print_table(sequential_decision_environment.to_arrows(policy_iter))
