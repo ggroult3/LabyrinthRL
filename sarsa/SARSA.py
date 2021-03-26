@@ -5,7 +5,7 @@ import time
 
 
 
-def epsilon_greedy(Q, epsilon, n_actions, s, test=False):
+def epsilon_greedy(Q, epsilon, n_actions, s, test):
     """
     Renvoie l'action à choisir selon la politique epsilon-greedy
     ------------------------------------------------------------
