@@ -77,8 +77,8 @@ def sarsa(alpha, gamma, epsilon, episodes, max_steps, L, test):
         
         L = reset_eau(L)
         total_reward = 0
-        s = 0 # état de départ en haut à gauche
-        #s = random.randint(0, len(state_list) - 1)  #état de départ aléatoire
+        #s = 0 # état de départ en haut à gauche
+        s = random.randint(0, len(state_list) - 1)  #état de départ aléatoire
         coord_s = state_list[s] 
         a = epsilon_greedy(Q, epsilon, n_actions, s, test)
         t = 0
@@ -190,6 +190,7 @@ def test_agent(Q, L, n_actions, delay=1):
                 
                 print("Phase de test terminée --> Score : " + str(total_reward))
                 displayer.window.destroy()
+                exit()
             
             if done is False:
                 displayer.window.after(500, lambda: progress_loop(done, steps, s, total_reward,eaubue,L))
