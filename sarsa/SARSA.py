@@ -2,6 +2,7 @@ import numpy as np
 from display import Displayer
 import matplotlib.pyplot as plt
 import time
+import random
 
 
 
@@ -15,10 +16,11 @@ def epsilon_greedy(Q, epsilon, n_actions, s, test):
     s' : état
     ------------------------------------------------------------
     """
-    if test or np.random.rand() > epsilon:
-        action = np.argmax(Q[s, :])
-    else:
+    if not test and np.random.rand() < epsilon:
         action = np.random.randint(0, n_actions)
+        
+    else:
+        action = np.argmax(Q[s, :])
     return action
 
 def map_state(L):
