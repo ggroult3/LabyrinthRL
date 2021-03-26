@@ -78,7 +78,7 @@ def sarsa(alpha, gamma, epsilon, episodes, max_steps, L, test):
         s = 0 # état de départ en haut à gauche
         #s = random.randint(0, len(state_list) - 1)  #état de départ aléatoire
         coord_s = state_list[s] 
-        a = epsilon_greedy(Q, epsilon, n_actions, s)
+        a = epsilon_greedy(Q, epsilon, n_actions, s, test)
         t = 0
         done = False
         
@@ -103,7 +103,7 @@ def sarsa(alpha, gamma, epsilon, episodes, max_steps, L, test):
             reward=rewardlist[case]
             total_reward += reward
             s_ = next_state
-            a_ = epsilon_greedy(Q, epsilon, n_actions, s_)
+            a_ = epsilon_greedy(Q, epsilon, n_actions, s_, test)
             
             if done:
                 Q[s, a] += alpha * ( reward  - Q[s, a] )
